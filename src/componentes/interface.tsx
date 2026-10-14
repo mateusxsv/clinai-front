@@ -16,6 +16,8 @@ import {
   Eye,
   EyeOff,
   Settings,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useApp } from "../estado";
 import { service } from "../servicos/api";
@@ -174,18 +176,8 @@ export function useAction() {
   return { busy, error, run };
 }
 export function Layout({ children }: { children: ReactNode }) {
-  const { profile, setProfile, setReport } = useApp();
+  const { profile, setProfile, setReport, theme, setTheme } = useApp();
   const { busy, error, run } = useAction();
-  const [online, setOnline] = useState(navigator.onLine);
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine);
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
-    };
-  }, []);
   const { pathname } = useLocation();
   const doctor = profile?.role === "doctor";
   const isActive = (url: string) =>
@@ -215,11 +207,10 @@ export function Layout({ children }: { children: ReactNode }) {
           to={profile ? (doctor ? "/medico" : "/inicio") : "/"}
           className="brand"
         >
-          <img
-            className="brand-logo brand-logo-full"
-            src="/assets/logo-white.png"
-            alt="ClinAi"
-          />
+          <img className="brand-logo" src="/assets/logo.png" alt="" />
+          <span>
+            Clin<span>Ai</span>
+          </span>
         </Link>
         <p className="sidebar-label">
           {doctor ? "ÁREA DO PROFISSIONAL" : "SEU ESPAÇO DE CUIDADO"}
@@ -251,15 +242,6 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         )}
         <div className="sidebar-bottom">
-          <Link
-            className="settings-link"
-            to="/configuracoes"
-            aria-current={
-              pathname.startsWith("/configuracoes") ? "page" : undefined
-            }
-          >
-            <Settings size={20} /> Configurações
-          </Link>
           {profile && (
             <>
               <div className="user">
@@ -304,22 +286,34 @@ export function Layout({ children }: { children: ReactNode }) {
             {doctor ? "Portal do profissional" : "Seu espaço de cuidado"}
           </span>
           <div className="topbar-actions">
+            <button
+              type="button"
+              className="theme-toggle"
+              aria-label="Alternar tema claro e escuro"
+              onClick={() => {
+                const escuro =
+                  theme === "dark" ||
+                  (theme === "system" &&
+                    window.matchMedia?.("(prefers-color-scheme: dark)")
+                      .matches);
+                setTheme(escuro ? "light" : "dark");
+              }}
+            >
+              <Sun className="theme-icon-light" size={20} aria-hidden="true" />
+              <Moon className="theme-icon-dark" size={20} aria-hidden="true" />
+            </button>
             <Link
               className="settings-link"
               to="/configuracoes"
               aria-label="Configurações de aparência e acessibilidade"
+              aria-current={
+                pathname.startsWith("/configuracoes") ? "page" : undefined
+              }
             >
               <Settings size={20} />
-              <span>Configurações</span>
             </Link>
           </div>
         </div>
-        {!online && (
-          <div className="connection-banner" role="status">
-            Você está sem conexão. Reconecte-se para salvar alterações.
-          </div>
-        )}
-
         <ErrorMessage message={error} />
         <main id="main">{children}</main>
         <footer>ClinAi · Cuidado que começa com escuta.</footer>

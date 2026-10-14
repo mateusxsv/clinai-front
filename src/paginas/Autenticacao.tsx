@@ -35,7 +35,7 @@ export function Welcome() {
           />
           <img
             className="welcome-logo logo-on-dark"
-            src="/assets/logo-white-clinai.png"
+            src="/assets/logo.png"
             alt="Logo ClinAi"
           />
         </div>
@@ -43,10 +43,7 @@ export function Welcome() {
         <p>
           Conte como você está e encontre um profissional para o próximo passo.
         </p>
-        <Forward to="/medicos">Encontrar profissionais</Forward>
-        <Link className="text-link" to="/acesso">
-          Acessar minha conta
-        </Link>
+        <Forward to="/acesso">Começar</Forward>
         <small>
           Encontre atendimento. Organize suas consultas. Cuide de você.
         </small>

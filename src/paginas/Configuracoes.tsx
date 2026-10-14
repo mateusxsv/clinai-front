@@ -37,16 +37,23 @@ const opcoes = [
   ],
 ] as const;
 export function Configuracoes() {
-  const { theme, setTheme, acessibilidade, setAcessibilidade } = useApp();
+  const { profile, theme, setTheme, acessibilidade, setAcessibilidade } =
+    useApp();
   const alterar = (chave: keyof Acessibilidade, valor: boolean) =>
     setAcessibilidade({ ...acessibilidade, [chave]: valor });
   return (
     <Page
       title="Configurações"
       subtitle="Deixe a ClinAi mais confortável para você."
+      back={
+        profile
+          ? profile.role === "doctor"
+            ? "/medico"
+            : "/inicio"
+          : "/acesso"
+      }
     >
       <div className="settings-grid">
-        <InstalacaoPwa />
         <Card className="settings-card">
           <div className="section-title">
             <Palette aria-hidden="true" />
@@ -114,6 +121,7 @@ export function Configuracoes() {
             disponíveis em qualquer configuração.
           </p>
         </Card>
+        <InstalacaoPwa />
       </div>
       <p className="preference-saved">
         <Check size={18} aria-hidden="true" /> Preferências aplicadas
