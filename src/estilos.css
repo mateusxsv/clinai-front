@@ -2408,3 +2408,35 @@ html[data-movimento-reduzido="true"] *::after {
     width: 100%;
   }
 }
+
+.date-grid .date-status {
+  font-size: 0.62rem;
+  line-height: 1.25;
+  font-weight: 600;
+}
+.date-grid button.date-unavailable {
+  background: #fff1f2;
+  border-color: #be123c;
+  color: #9f1239;
+}
+.date-grid button.date-unavailable small {
+  color: inherit;
+}
+.date-grid button.date-unavailable.selected {
+  outline: 2px solid #9f1239;
+  outline-offset: 2px;
+}
+.date-grid button.date-limited:not(.selected) {
+  border-color: #a16207;
+}
+[data-theme="dark"] .date-grid button.date-unavailable {
+  background: #4c1727;
+  border-color: #fb7185;
+  color: #fecdd3;
+}
+[data-theme="dark"] .date-grid button.date-unavailable small {
+  color: inherit;
+}
+[data-theme="dark"] .date-grid button.date-unavailable.selected {
+  outline-color: #fb7185;
+}

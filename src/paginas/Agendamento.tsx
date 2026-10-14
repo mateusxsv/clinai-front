@@ -299,6 +299,10 @@ function FormularioAgendamento({ id }: { id: string }) {
   const [doctorError, setDoctorError] = useState("");
   const [retryDoctor, setRetryDoctor] = useState(0);
   const enviando = useRef(false);
+  const [dates] = useState(nextDates);
+  const [daySlots, setDaySlots] = useState<Record<string, number | "error">>(
+    {},
+  );
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [slotsError, setSlotsError] = useState("");
@@ -345,7 +349,10 @@ function FormularioAgendamento({ id }: { id: string }) {
     service
       .getSlots(id!, date)
       .then((value) => {
-        if (current) setSlots(value);
+        if (current) {
+          setSlots(value);
+          setDaySlots((v) => ({ ...v, [date]: value.length }));
+        }
       })
       .catch((e) => {
         if (current)
@@ -362,6 +369,27 @@ function FormularioAgendamento({ id }: { id: string }) {
       current = false;
     };
   }, [id, date, refreshSlots]);
+  useEffect(() => {
+    let current = true;
+    setDaySlots({});
+    // Limita requisições simultâneas para não sobrecarregar a API.
+    const pending = dates.filter((d) => d !== date);
+    const worker = async () => {
+      while (current && pending.length) {
+        const day = pending.shift()!;
+        try {
+          const values = await service.getSlots(id, day);
+          if (current) setDaySlots((v) => ({ ...v, [day]: values.length }));
+        } catch {
+          if (current) setDaySlots((v) => ({ ...v, [day]: "error" }));
+        }
+      }
+    };
+    void Promise.all([worker(), worker(), worker()]);
+    return () => {
+      current = false;
+    };
+  }, [id, dates, refreshSlots]);
   if (!doctor)
     return (
       <Page
@@ -531,12 +559,12 @@ function FormularioAgendamento({ id }: { id: string }) {
                   role="group"
                   aria-label="Dias disponíveis"
                 >
-                  {nextDates().map((d) => (
+                  {dates.map((d) => (
                     <button
                       key={d}
-                      aria-label={dateLabel(d)}
+                      aria-label={`${dateLabel(d)}${daySlots[d] === 0 ? ", Indisponível" : typeof daySlots[d] === "number" ? `, ${daySlots[d]} horários disponíveis` : ""}`}
                       aria-pressed={date === d}
-                      className={date === d ? "selected" : ""}
+                      className={`${date === d ? "selected" : ""} ${daySlots[d] === 0 ? "date-unavailable" : daySlots[d] === 2 ? "date-limited" : ""}`}
                       onClick={() => {
                         setDate(d);
                         setTime("");
@@ -548,6 +576,15 @@ function FormularioAgendamento({ id }: { id: string }) {
                         })}
                       </small>
                       <strong>{d.slice(-2)}</strong>
+                      <span className="date-status">
+                        {daySlots[d] === 0
+                          ? "Indisponível"
+                          : typeof daySlots[d] === "number"
+                            ? `${daySlots[d]} horários`
+                            : daySlots[d] === "error"
+                              ? "Verificar"
+                              : "Consultando…"}
+                      </span>
                       <small>
                         {new Date(d + "T12:00:00").toLocaleDateString("pt-BR", {
                           month: "short",

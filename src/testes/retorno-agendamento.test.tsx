@@ -118,7 +118,11 @@ it("atualiza horários após conflito e permite concluir uma nova tentativa", as
     screen.getByRole("button", { name: "Confirmar agendamento" }),
   );
   await screen.findByText("Horário ocupado");
-  await waitFor(() => expect(slots).toHaveBeenCalledTimes(2));
+  await waitFor(() =>
+    expect(
+      slots.mock.calls.filter((call) => call[1] === slots.mock.calls[0][1]),
+    ).toHaveLength(2),
+  );
   expect(screen.queryByRole("button", { name: "09:00" })).toBeNull();
   expect(state.setReport).not.toHaveBeenCalled();
   await user.click(await screen.findByRole("button", { name: "10:00" }));
@@ -135,4 +139,33 @@ it("atualiza horários após conflito e permite concluir uma nova tentativa", as
     plan: "Particular",
   });
   expect(state.setReport).toHaveBeenCalledWith(undefined);
+});
+
+it("marca dias vazios em vermelho sem confundir falha de conexão com indisponibilidade", async () => {
+  vi.spyOn(service, "getDoctors").mockResolvedValue([medico]);
+  let count = 0;
+  vi.spyOn(service, "getSlots").mockImplementation(async () => {
+    count++;
+    if (count === 2) throw new Error("Sem conexão");
+    return count === 3 ? ["08:00", "08:30"] : [];
+  });
+  booking();
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole("button", { name: /Indisponível/ }).length,
+    ).toBeGreaterThan(0),
+  );
+  expect(
+    screen
+      .getAllByRole("button", { name: /Indisponível/ })[0]
+      .classList.contains("date-unavailable"),
+  ).toBe(true);
+  await screen.findByText("Verificar");
+  expect(
+    screen
+      .getByText("Verificar")
+      .closest("button")!
+      .classList.contains("date-unavailable"),
+  ).toBe(false);
+  await screen.findByText("2 horários");
 });
