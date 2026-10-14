@@ -1,3 +1,4 @@
+import { EntradaPublica } from "./componentes/EntradaPublica";
 import { PwaProvider, AvisosPwa } from "./componentes/Pwa";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -50,11 +51,46 @@ function App() {
           path="/configuracoes/acessibilidade"
           element={<Configuracoes />}
         />
-        <Route path="/" element={<Welcome />} />
-        <Route path="/acesso" element={<Access />} />
-        <Route path="/entrar" element={<Login />} />
-        <Route path="/recuperar" element={<Recover />} />
-        <Route path="/cadastro" element={<Register />} />
+        <Route
+          path="/"
+          element={
+            <EntradaPublica>
+              <Welcome />
+            </EntradaPublica>
+          }
+        />
+        <Route
+          path="/acesso"
+          element={
+            <EntradaPublica>
+              <Access />
+            </EntradaPublica>
+          }
+        />
+        <Route
+          path="/entrar"
+          element={
+            <EntradaPublica>
+              <Login />
+            </EntradaPublica>
+          }
+        />
+        <Route
+          path="/recuperar"
+          element={
+            <EntradaPublica>
+              <Recover />
+            </EntradaPublica>
+          }
+        />
+        <Route
+          path="/cadastro"
+          element={
+            <EntradaPublica>
+              <Register />
+            </EntradaPublica>
+          }
+        />
         <Route
           path="/inicio"
           element={

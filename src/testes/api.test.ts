@@ -56,9 +56,6 @@ describe("Contrato real do backend", () => {
     await expect(service.recover("a@example.com")).rejects.toMatchObject({
       status: 501,
     });
-    await expect(service.getAvailability()).rejects.toMatchObject({
-      status: 501,
-    });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
   it("usa o proxy local quando não há URL configurada", async () => {
@@ -105,5 +102,45 @@ describe("Contrato real do backend", () => {
       "Não foi possível conectar",
     );
     await expect(service.getDoctors()).rejects.toMatchObject({ status: 502 });
+  });
+});
+
+it("valida horários e remove duplicados e horários passados", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValueOnce(new Response('["10:00","09:00","10:00"]'))
+      .mockResolvedValueOnce(new Response('["25:00"]'))
+      .mockResolvedValueOnce(new Response('["10:00"]')),
+  );
+  expect(await service.getSlots("abc", "2099-05-10")).toEqual([
+    "09:00",
+    "10:00",
+  ]);
+  await expect(service.getSlots("abc", "2099-05-10")).rejects.toMatchObject({
+    status: 502,
+  });
+  expect(await service.getSlots("abc", "2000-05-10")).toEqual([]);
+});
+it("consulta e salva disponibilidade usando a sessão", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(new Response("[]"))
+    .mockResolvedValueOnce(new Response("{}"));
+  vi.stubGlobal("fetch", fetcher);
+  expect(await service.getAvailability()).toEqual([]);
+  const value = {
+    date: "2099-05-10",
+    start: "08:00",
+    end: "12:00",
+    duration: 30,
+  };
+  await service.saveAvailability(value);
+  expect(fetcher.mock.calls[1][0]).toBe("https://api.example.com/availability");
+  expect(fetcher.mock.calls[1][1]).toMatchObject({
+    method: "POST",
+    credentials: "include",
+    body: JSON.stringify(value),
   });
 });

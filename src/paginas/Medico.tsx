@@ -250,18 +250,40 @@ export function AvailabilityPage() {
   const [end, setEnd] = useState("12:00");
   const [duration, setDuration] = useState("30");
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [retry, setRetry] = useState(0);
   const { busy, error, run } = useAction();
   const value = { date, start, end, duration: Number(duration) };
   useEffect(() => {
-    void run(async () => {
-      const all = await service.getAvailability();
-      const v = all.find((v) => v.date === date);
-      setStart(v?.start || "08:00");
-      setEnd(v?.end || "12:00");
-      setDuration(String(v?.duration || 30));
-      setSaved(false);
-    });
-  }, [date]);
+    let current = true;
+    setLoading(true);
+    setLoadError("");
+    setSaved(false);
+    service
+      .getAvailability()
+      .then((all) => {
+        if (!current) return;
+        const v = all.find((v) => v.date === date);
+        setStart(v?.start || "08:00");
+        setEnd(v?.end || "12:00");
+        setDuration(String(v?.duration || 30));
+      })
+      .catch((e) => {
+        if (current)
+          setLoadError(
+            e instanceof Error
+              ? e.message
+              : "Não foi possível carregar a disponibilidade.",
+          );
+      })
+      .finally(() => {
+        if (current) setLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [date, retry]);
   return (
     <Page
       title="Disponibilidade"
@@ -274,12 +296,14 @@ export function AvailabilityPage() {
           onSubmit={(e) => {
             e.preventDefault();
             void run(async () => {
+              if (loading || loadError || !getTimes(value).length) return;
               await service.saveAvailability(value);
               setSaved(true);
             });
           }}
         >
           <Field
+            disabled={busy}
             label="Data"
             required
             type="date"
@@ -287,37 +311,49 @@ export function AvailabilityPage() {
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
-          <div className="two-fields">
-            <Field
-              label="Início do período"
-              required
-              type="time"
-              value={start}
-              onChange={(e) => {
-                setStart(e.target.value);
+          <fieldset
+            disabled={busy || loading || !!loadError}
+            style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+          >
+            <div className="two-fields">
+              <Field
+                label="Início do período"
+                required
+                type="time"
+                value={start}
+                onChange={(e) => {
+                  setStart(e.target.value);
+                  setSaved(false);
+                }}
+              />
+              <Field
+                label="Fim do período"
+                required
+                type="time"
+                value={end}
+                onChange={(e) => {
+                  setEnd(e.target.value);
+                  setSaved(false);
+                }}
+              />
+            </div>
+            <Select
+              label="Duração da consulta (minutos)"
+              value={duration}
+              onChange={(v) => {
+                setDuration(v);
                 setSaved(false);
               }}
+              options={["15", "20", "30", "45", "60"]}
             />
-            <Field
-              label="Fim do período"
-              required
-              type="time"
-              value={end}
-              onChange={(e) => {
-                setEnd(e.target.value);
-                setSaved(false);
-              }}
-            />
-          </div>
-          <Select
-            label="Duração da consulta (minutos)"
-            value={duration}
-            onChange={(v) => {
-              setDuration(v);
-              setSaved(false);
-            }}
-            options={["15", "20", "30", "45", "60"]}
-          />
+          </fieldset>
+          {loading && <p role="status">Carregando disponibilidade…</p>}
+          <ErrorMessage message={loadError} />
+          {loadError && (
+            <Button type="button" onClick={() => setRetry((v) => v + 1)}>
+              Tentar novamente
+            </Button>
+          )}
           <p>Horários já agendados permanecem reservados.</p>
           {start < end && (
             <div className="tags">
@@ -332,7 +368,10 @@ export function AvailabilityPage() {
               Disponibilidade salva e atualizada no calendário de agendamento.
             </p>
           )}
-          <Button type="submit" disabled={busy}>
+          <Button
+            type="submit"
+            disabled={busy || loading || !!loadError || !getTimes(value).length}
+          >
             {busy ? "Salvando…" : "Salvar disponibilidade"}
           </Button>
         </form>

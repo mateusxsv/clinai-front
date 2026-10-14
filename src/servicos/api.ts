@@ -32,10 +32,7 @@ function enderecoApi() {
   try {
     url = new URL(value);
   } catch {
-    throw new ApiError(
-      "O endereço do serviço de atendimento é inválido.",
-      503,
-    );
+    throw new ApiError("O endereço do serviço de atendimento é inválido.", 503);
   }
 
   if (
@@ -45,10 +42,7 @@ function enderecoApi() {
     url.search ||
     url.hash
   ) {
-    throw new ApiError(
-      "O endereço do serviço de atendimento é inválido.",
-      503,
-    );
+    throw new ApiError("O endereço do serviço de atendimento é inválido.", 503);
   }
 
   return value.replace(/\/$/, "");
@@ -174,20 +168,30 @@ export const httpService: ClinAiService = {
     const values = await request<MedicoApi[]>("/doctors");
 
     if (!Array.isArray(values)) {
-      throw new ApiError(
-        "Não foi possível ler a lista de profissionais.",
-        502,
-      );
+      throw new ApiError("Não foi possível ler a lista de profissionais.", 502);
     }
 
     return values.map(adaptarMedico);
   },
 
   getSlots: async (doctorId, date) => {
-  return await request<string[]>(
-    `/doctors/${doctorId}/slots?date=${encodeURIComponent(date)}`,
-  );
-},
+    const values = await request<unknown>(
+      `/doctors/${encodeURIComponent(doctorId)}/slots?date=${encodeURIComponent(date)}`,
+    );
+    if (
+      !Array.isArray(values) ||
+      values.some(
+        (v) => typeof v !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(v),
+      )
+    )
+      throw new ApiError(
+        "O serviço enviou horários inválidos. Tente novamente.",
+        502,
+      );
+    return [...new Set(values as string[])]
+      .filter((t) => Date.parse(`${date}T${t}:00-03:00`) > Date.now())
+      .sort();
+  },
 
   login: async (email, password, role) => {
     return await request("/auth/login", "POST", {
@@ -209,28 +213,22 @@ export const httpService: ClinAiService = {
   saveProfile: indisponivel,
 
   getAppointments: async () => {
-  return await request("/appointments");
+    return await request("/appointments");
   },
 
   book: async (input) => {
-  return await request(
-    "/appointments",
-    "POST",
-    input,
-  );
+    return await request("/appointments", "POST", input);
   },
 
   updateAppointment: async (id, patch) => {
-  return await request(
-    `/appointments/${id}`,
-    "PATCH",
-    patch,
-  );
+    return await request(`/appointments/${id}`, "PATCH", patch);
   },
 
-  getAvailability: indisponivel,
+  getAvailability: async () => request("/availability"),
 
-  saveAvailability: indisponivel,
+  saveAvailability: async (value) => {
+    await request("/availability", "POST", value);
+  },
 
   logout: async () => {
     await request("/auth/logout", "POST");

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
@@ -290,10 +290,15 @@ export function Doctors() {
 }
 export function Book() {
   const { id } = useParams();
-
+  return <FormularioAgendamento key={id} id={id!} />;
+}
+function FormularioAgendamento({ id }: { id: string }) {
   const { profile, report, setReport } = useApp();
   const [doctor, setDoctor] = useState<Doctor>();
   const [loaded, setLoaded] = useState(false);
+  const [doctorError, setDoctorError] = useState("");
+  const [retryDoctor, setRetryDoctor] = useState(0);
+  const enviando = useRef(false);
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [slotsError, setSlotsError] = useState("");
@@ -305,14 +310,32 @@ export function Book() {
   const [done, setDone] = useState<Appointment>();
   const { busy, error, run } = useAction();
   useEffect(() => {
-    void run(async () => {
-      const doctors = await service.getDoctors();
-      const found = doctors.find((d) => d.id === id);
-      setDoctor(found);
-      setPlan(found?.plans[0] || "Particular");
-      setLoaded(true);
-    });
-  }, [id]);
+    let current = true;
+    setLoaded(false);
+    setDoctorError("");
+    service
+      .getDoctors()
+      .then((doctors) => {
+        if (!current) return;
+        const found = doctors.find((d) => d.id === id);
+        setDoctor(found);
+        setPlan(found?.plans[0] || "Particular");
+      })
+      .catch((e) => {
+        if (current)
+          setDoctorError(
+            e instanceof Error
+              ? e.message
+              : "Não foi possível carregar o profissional.",
+          );
+      })
+      .finally(() => {
+        if (current) setLoaded(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [id, retryDoctor]);
   useEffect(() => {
     let current = true;
     setSlotsLoading(true);
@@ -343,17 +366,30 @@ export function Book() {
     return (
       <Page
         title={
-          loaded ? "Profissional não encontrado" : "Carregando profissional…"
+          doctorError
+            ? "Não foi possível carregar o profissional"
+            : loaded
+              ? "Profissional não encontrado"
+              : "Carregando profissional…"
         }
         back="/medicos"
       >
-        <ErrorMessage message={error} />
+        <ErrorMessage message={doctorError} />
+        {doctorError && (
+          <Button onClick={() => setRetryDoctor((v) => v + 1)}>
+            Tentar novamente
+          </Button>
+        )}
         <Forward to="/medicos">Ver profissionais</Forward>
       </Page>
     );
   const reserved = (t: string) => !slots.includes(t);
-  const submit = () =>
-    run(async () => {
+  const submit = () => {
+    if (enviando.current) return;
+    enviando.current = true;
+    return run(async () => {
+      if (!time || slotsLoading || slotsError || !slots.includes(time))
+        throw new Error("Selecione um horário disponível.");
       let appointment: Appointment;
       try {
         appointment = await service.book({
@@ -372,7 +408,10 @@ export function Book() {
       }
       setDone(appointment);
       setReport(undefined);
+    }).finally(() => {
+      enviando.current = false;
     });
+  };
   return (
     <Page
       title={
@@ -468,7 +507,10 @@ export function Book() {
                   </div>
                 </dl>
                 <ErrorMessage message={error} />
-                <Button disabled={busy} onClick={() => void submit()}>
+                <Button
+                  disabled={busy || slotsLoading || !time || reserved(time)}
+                  onClick={() => void submit()}
+                >
                   {busy ? "Reservando…" : "Confirmar agendamento"}
                 </Button>
                 <Button
@@ -554,7 +596,7 @@ export function Book() {
                   label="Forma de atendimento"
                   value={plan}
                   onChange={setPlan}
-                  options={doctor.plans}
+                  options={doctor.plans.length ? doctor.plans : ["Particular"]}
                 />
                 <ErrorMessage message={error} />
                 <div className="booking-action">
@@ -564,7 +606,9 @@ export function Book() {
                       : "Selecione um horário para continuar"}
                   </p>
                   <Button
-                    disabled={!time || reserved(time)}
+                    disabled={
+                      slotsLoading || !!slotsError || !time || reserved(time)
+                    }
                     onClick={() => setConfirm(true)}
                   >
                     Continuar com o agendamento
@@ -587,13 +631,17 @@ export function Appointments() {
   const [loading, setLoading] = useState(true);
   const { busy, error, run } = useAction();
   const load = async () => {
-    const [a, d] = await Promise.all([
-      service.getAppointments(),
-      service.getDoctors(),
-    ]);
-    setList(a);
-    setDoctors(d);
-    setLoading(false);
+    setLoading(true);
+    try {
+      const [a, d] = await Promise.all([
+        service.getAppointments(),
+        service.getDoctors(),
+      ]);
+      setList(a);
+      setDoctors(d);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     void run(load);
