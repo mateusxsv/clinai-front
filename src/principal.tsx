@@ -1,3 +1,4 @@
+import { PwaProvider, AvisosPwa } from "./componentes/Pwa";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -42,6 +43,7 @@ function Protected({
 function App() {
   return (
     <Layout>
+      <AvisosPwa />
       <Routes>
         <Route path="/configuracoes" element={<Configuracoes />} />
         <Route
@@ -133,9 +135,11 @@ function App() {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Provider>
-        <App />
-      </Provider>
+      <PwaProvider>
+        <Provider>
+          <App />
+        </Provider>
+      </PwaProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

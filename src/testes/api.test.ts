@@ -7,25 +7,23 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 describe("Contrato real do backend", () => {
-  it("consulta /medicos e converte o cadastro sem inventar valores", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            {
-              _id: "abc",
-              nome: "Ana Silva",
-              especialidade: "Cardiologia",
-              clinica: "Clínica Central",
-            },
-          ]),
-        ),
-      );
+  it("consulta /doctors e converte o cadastro sem inventar valores", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            _id: "abc",
+            nome: "Ana Silva",
+            especialidade: "Cardiologia",
+            clinica: "Clínica Central",
+          },
+        ]),
+      ),
+    );
     vi.stubGlobal("fetch", fetcher);
     const [medico] = await service.getDoctors();
-    expect(fetcher.mock.calls[0][0]).toBe("https://api.example.com/medicos");
-    expect(fetcher.mock.calls[0][1].credentials).toBe("omit");
+    expect(fetcher.mock.calls[0][0]).toBe("https://api.example.com/doctors");
+    expect(fetcher.mock.calls[0][1].credentials).toBe("include");
     expect(medico).toMatchObject({
       id: "abc",
       name: "Ana Silva",
@@ -47,26 +45,33 @@ describe("Contrato real do backend", () => {
     expect(await service.getDoctors()).toEqual([]);
     await expect(service.getDoctors()).rejects.toMatchObject({ status: 502 });
   });
-  it("não acessa rede nem cria sessão nos fluxos ausentes no servidor", async () => {
-    const fetcher = vi.fn();
+  it("restaura a sessão pela API e mantém recursos não implementados indisponíveis", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(new Response("{}", { status: 401 }));
     vi.stubGlobal("fetch", fetcher);
     expect(await service.getSession()).toBeNull();
-    await expect(
-      service.login("a@example.com", "senha", "patient"),
-    ).rejects.toMatchObject({ status: 501 });
-    await expect(service.getAppointments()).rejects.toMatchObject({
+    expect(fetcher.mock.calls[0][0]).toBe("https://api.example.com/me");
+    expect(fetcher.mock.calls[0][1].cache).toBe("no-store");
+    await expect(service.recover("a@example.com")).rejects.toMatchObject({
       status: 501,
     });
-    await expect(service.getSlots("abc", "2026-11-02")).rejects.toMatchObject({
+    await expect(service.getAvailability()).rejects.toMatchObject({
       status: 501,
     });
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it("usa o proxy local quando não há URL configurada", async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "");
+    const fetcher = vi.fn().mockResolvedValue(new Response("[]"));
+    vi.stubGlobal("fetch", fetcher);
+    await service.getDoctors();
+    expect(fetcher.mock.calls[0][0]).toBe("/api/doctors");
   });
   it("exige URL HTTP sem credenciais e nunca usa MongoDB no navegador", async () => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
     for (const url of [
-      "",
       "mongodb+srv://exemplo.invalid",
       "https://usuario:senha@example.com",
     ]) {
@@ -85,8 +90,8 @@ describe("Contrato real do backend", () => {
         )
         .mockResolvedValueOnce(new Response(null, { status: 204 })),
     );
-    await expect(request("/medicos")).rejects.toThrow("Serviço indisponível");
-    await expect(request("/medicos")).resolves.toBeUndefined();
+    await expect(request("/doctors")).rejects.toThrow("Serviço indisponível");
+    await expect(request("/doctors")).resolves.toBeUndefined();
   });
   it("trata falha de rede e JSON inválido como erro, sem resultados locais", async () => {
     vi.stubGlobal(

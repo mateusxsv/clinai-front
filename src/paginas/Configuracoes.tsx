@@ -1,3 +1,4 @@
+import { InstalacaoPwa } from "../componentes/Pwa";
 import {
   Accessibility,
   Palette,
@@ -45,6 +46,7 @@ export function Configuracoes() {
       subtitle="Deixe a ClinAi mais confortável para você."
     >
       <div className="settings-grid">
+        <InstalacaoPwa />
         <Card className="settings-card">
           <div className="section-title">
             <Palette aria-hidden="true" />

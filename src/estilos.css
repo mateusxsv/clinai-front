@@ -2334,3 +2334,11 @@ html[data-movimento-reduzido="true"] *::after {
   align-items: stretch;
   flex-direction: column;
 }
+
+/* Estado de rede e atualização: acompanha os temas e quebra no celular. */
+.pwa-aviso { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 18px; margin:16px 0; border:1px solid var(--line); border-radius:12px; background:var(--paper); color:inherit; }
+.pwa-aviso > svg { flex-shrink:0; }
+.pwa-aviso > span { flex:1 1 220px; line-height:1.5; }
+.pwa-aviso button { font:inherit; padding:10px 14px; border-radius:8px; border:1px solid currentColor; color:inherit; background:transparent; cursor:pointer; }
+.pwa-aviso button:disabled { opacity:.6; cursor:not-allowed; }
+.pwa-aviso button:focus-visible { outline:3px solid var(--brand); outline-offset:3px; }

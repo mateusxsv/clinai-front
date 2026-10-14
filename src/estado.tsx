@@ -68,6 +68,10 @@ export function Provider({ children }: { children: ReactNode }) {
       .then((p) => {
         if (atual) setProfile(p);
       })
+      .catch(() => {
+        // Sem rede, não há identidade local para restaurar.
+        if (atual) setProfile(null);
+      })
       .finally(() => {
         if (atual) setReady(true);
       });

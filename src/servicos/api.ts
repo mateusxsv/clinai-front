@@ -65,8 +65,9 @@ export async function request<T>(
   try {
     const response = await fetch(`${base}${path}`, {
       method,
-      // A API atual usa CORS público e não implementa sessões.
+      // A sessão usa cookie; respostas de saúde nunca devem ir para o cache HTTP.
       credentials: "include",
+      cache: "no-store",
       headers:
         body === undefined
           ? { Accept: "application/json" }
